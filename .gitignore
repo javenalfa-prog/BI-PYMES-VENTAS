@@ -1,0 +1,11 @@
+.env
+.venv/
+venv/
+__pycache__/
+*.pyc
+*.pyo
+reportes/
+whatsapp_demo.txt
+.DS_Store
+*.log
+.ipynb_checkpoints/
