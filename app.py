@@ -102,31 +102,28 @@ def main():
     with st.expander("🔎 Filtros del dashboard", expanded=True):
         fcol1, fcol2, fcol3 = st.columns(3)
 
-        # Filtro por fechas
+        # Filtro por fechas (desde / hasta)
         with fcol1:
             fecha_min = df["fecha"].min().date()
             fecha_max = df["fecha"].max().date()
-            rango = st.date_input("Rango de fechas", value=(fecha_min, fecha_max))
-            if len(rango) == 2:
-                f_ini, f_fin = rango
-            else:
-                f_ini, f_fin = fecha_min, fecha_max
+            f_ini = st.date_input("Fecha Desde", value=fecha_min, min_value=fecha_min, max_value=fecha_max)
+            f_fin = st.date_input("Fecha Hasta", value=fecha_max, min_value=fecha_min, max_value=fecha_max)
 
-        # Filtro por producto
+        # Filtro por producto (incluye "Todos")
         with fcol2:
-            productos = sorted(df["producto"].unique().tolist())
-            prod_sel = st.multiselect("Producto(s)", options=productos, default=[])
+            productos = ["(Todos)"] + sorted(df["producto"].unique().tolist())
+            prod_sel = st.multiselect("Producto(s)", options=productos, default=["(Todos)"])
 
-        # Filtro por metodo de pago
+        # Filtro por metodo de pago (incluye "Todos")
         with fcol3:
-            pagos = sorted(df["metodo_pago"].unique().tolist())
-            pago_sel = st.multiselect("Método de pago", options=pagos, default=[])
+            pagos = ["(Todos)"] + sorted(df["metodo_pago"].unique().tolist())
+            pago_sel = st.multiselect("Método de pago", options=pagos, default=["(Todos)"])
 
     # Aplicar filtros
     mask = (df["fecha"].dt.date >= f_ini) & (df["fecha"].dt.date <= f_fin)
-    if prod_sel:
+    if prod_sel and "(Todos)" not in prod_sel:
         mask &= df["producto"].isin(prod_sel)
-    if pago_sel:
+    if pago_sel and "(Todos)" not in pago_sel:
         mask &= df["metodo_pago"].isin(pago_sel)
     df_f = df.loc[mask].copy()
 
