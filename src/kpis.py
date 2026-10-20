@@ -100,6 +100,26 @@ def compute_kpis(df: pd.DataFrame, monthly_target: float, cost_ratio: float) -> 
     )
     kpis["estacionalidad_mes"] = df2.groupby("mes")["total"].sum().sort_index()
 
+    # --- Ventas por año x mes (matriz 12 meses) ---
+    df2["anio"] = df2["fecha"].dt.year
+    df2["mes_num"] = df2["fecha"].dt.month
+    pivot = (
+        df2.groupby(["anio", "mes_num"])["total"]
+        .sum()
+        .reset_index()
+        .pivot(index="anio", columns="mes_num", values="total")
+        .fillna(0)
+        .reindex(columns=range(1, 13), fill_value=0)
+    )
+    pivot.columns = [
+        "Ene", "Feb", "Mar", "Abr", "May", "Jun",
+        "Jul", "Ago", "Sep", "Oct", "Nov", "Dic",
+    ]
+    kpis["ventas_por_anio_mes"] = pivot
+
+    # --- 3 artículos de menor rotación ---
+    kpis["bottom3"] = prod.tail(3).sort_values("ventas", ascending=True)
+
     # --- 6. Principal metodo de pago ---
     pago = (
         df.groupby("metodo_pago")["total"]
@@ -128,4 +148,8 @@ def summary_dict(kpis: dict) -> dict:
         "periodos": {
             "mensual": kpis["mensual"].to_dict("records"),
         },
+        "bottom3": kpis["bottom3"].to_dict("records"),
+        "ventas_por_anio_mes": (
+            kpis["ventas_por_anio_mes"].reset_index().to_dict("records")
+        ),
     }

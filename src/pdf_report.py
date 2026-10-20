@@ -62,6 +62,31 @@ def _bar_chart(df, x_col, y_col, title, color="#2ca02c", top=None):
     return _fig_to_bytes(fig)
 
 
+def _bar_chart_anio_mes(pivot_df, title):
+    """Gráfico de barras agrupadas: filas=año, columnas=meses."""
+    import numpy as np
+
+    meses = list(pivot_df.columns)
+    anios = [str(a) for a in pivot_df.index]
+    x = np.arange(len(meses))
+    width = 0.8 / max(len(anios), 1)
+
+    fig, ax = plt.subplots(figsize=(9, 3.6))
+    colors_ = plt.cm.tab10.colors
+    for i, anio in enumerate(anios):
+        valores = pivot_df.loc[int(anio)].values if int(anio) in pivot_df.index else np.zeros(len(meses))
+        ax.bar(x + i * width, valores, width=width, label=anio, color=colors_[i % len(colors_)])
+
+    ax.set_xticks(x + width * (len(anios) - 1) / 2)
+    ax.set_xticklabels(meses, fontsize=8)
+    ax.set_title(title, fontsize=11, fontweight="bold")
+    ax.set_ylabel("Ventas")
+    ax.legend(title="Año", fontsize=7, title_fontsize=8, loc="upper left", bbox_to_anchor=(1, 1))
+    ax.grid(axis="y", alpha=0.3)
+    fig.tight_layout()
+    return _fig_to_bytes(fig)
+
+
 def _pie_chart(df, value_col, label_col, title):
     fig, ax = plt.subplots(figsize=(5.2, 3.2))
     ax.pie(
@@ -167,6 +192,41 @@ def build_pdf(kpis: dict, out_path: str, negocio: str = "Mi Negocio") -> str:
     story.append(Image(io.BytesIO(_bar_chart(
         ed, "dia", "total",
         "Ventas por día", "#9467bd")), width=17 * cm, height=5 * cm))
+
+    # ---------- Ventas por Año x Mes ----------
+    story.append(Paragraph("Ventas por Año y Mes (12 meses)", h2))
+    pivot = kpis["ventas_por_anio_mes"]
+    story.append(
+        Image(
+            io.BytesIO(_bar_chart_anio_mes(pivot, "Ventas por año y mes")),
+            width=17 * cm,
+            height=6.5 * cm,
+        )
+    )
+    story.append(Spacer(1, 0.3 * cm))
+
+    # ---------- Menor rotación ----------
+    story.append(Paragraph("Artículos de Menor Rotación (Top 3)", h2))
+    bottom = kpis["bottom3"]
+    bot_data = [["Producto", "Ventas", "Unidades", "Margen %"]]
+    for _, r in bottom.iterrows():
+        bot_data.append([
+            str(r["producto"])[:28],
+            _MONEY.format(r["ventas"]),
+            str(int(r["cantidad"])),
+            f"{r['margen_pct']:.1f}%",
+        ])
+    bt = Table(bot_data, colWidths=[5 * cm, 3.5 * cm, 2.5 * cm, 2.5 * cm])
+    bt.setStyle(TableStyle([
+        ("BACKGROUND", (0, 0), (-1, 0), colors.HexColor("#7f1d1d")),
+        ("TEXTCOLOR", (0, 0), (-1, 0), colors.white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("GRID", (0, 0), (-1, -1), 0.5, colors.grey),
+        ("FONTSIZE", (0, 0), (-1, -1), 8),
+        ("ROWBACKGROUNDS", (0, 1), (-1, -1), [colors.white, colors.HexColor("#fdecea")]),
+    ]))
+    story.append(bt)
+    story.append(Spacer(1, 0.4 * cm))
 
     story.append(PageBreak())
 
